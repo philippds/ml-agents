@@ -17,6 +17,7 @@ from typing import (
     Iterable as typing___Iterable,
     List as typing___List,
     Optional as typing___Optional,
+    Text as typing___Text,
     Tuple as typing___Tuple,
     cast as typing___cast,
 )
@@ -63,13 +64,9 @@ class ObservationTypeProto(builtin___int):
     @classmethod
     def items(cls) -> typing___List[typing___Tuple[builtin___str, 'ObservationTypeProto']]: ...
     DEFAULT = typing___cast('ObservationTypeProto', 0)
-    GOAL = typing___cast('ObservationTypeProto', 1)
-    REWARD = typing___cast('ObservationTypeProto', 2)
-    MESSAGE = typing___cast('ObservationTypeProto', 3)
+    GOAL_SIGNAL = typing___cast('ObservationTypeProto', 1)
 DEFAULT = typing___cast('ObservationTypeProto', 0)
-GOAL = typing___cast('ObservationTypeProto', 1)
-REWARD = typing___cast('ObservationTypeProto', 2)
-MESSAGE = typing___cast('ObservationTypeProto', 3)
+GOAL_SIGNAL = typing___cast('ObservationTypeProto', 1)
 
 class ObservationProto(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
@@ -96,6 +93,7 @@ class ObservationProto(google___protobuf___message___Message):
     compressed_channel_mapping = ... # type: google___protobuf___internal___containers___RepeatedScalarFieldContainer[builtin___int]
     dimension_properties = ... # type: google___protobuf___internal___containers___RepeatedScalarFieldContainer[builtin___int]
     observation_type = ... # type: ObservationTypeProto
+    name = ... # type: typing___Text
 
     @property
     def float_data(self) -> ObservationProto.FloatData: ...
@@ -109,6 +107,7 @@ class ObservationProto(google___protobuf___message___Message):
         compressed_channel_mapping : typing___Optional[typing___Iterable[builtin___int]] = None,
         dimension_properties : typing___Optional[typing___Iterable[builtin___int]] = None,
         observation_type : typing___Optional[ObservationTypeProto] = None,
+        name : typing___Optional[typing___Text] = None,
         ) -> None: ...
     @classmethod
     def FromString(cls, s: builtin___bytes) -> ObservationProto: ...
@@ -116,8 +115,8 @@ class ObservationProto(google___protobuf___message___Message):
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     if sys.version_info >= (3,):
         def HasField(self, field_name: typing_extensions___Literal[u"compressed_data",u"float_data",u"observation_data"]) -> builtin___bool: ...
-        def ClearField(self, field_name: typing_extensions___Literal[u"compressed_channel_mapping",u"compressed_data",u"compression_type",u"dimension_properties",u"float_data",u"observation_data",u"observation_type",u"shape"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"compressed_channel_mapping",u"compressed_data",u"compression_type",u"dimension_properties",u"float_data",u"name",u"observation_data",u"observation_type",u"shape"]) -> None: ...
     else:
         def HasField(self, field_name: typing_extensions___Literal[u"compressed_data",b"compressed_data",u"float_data",b"float_data",u"observation_data",b"observation_data"]) -> builtin___bool: ...
-        def ClearField(self, field_name: typing_extensions___Literal[u"compressed_channel_mapping",b"compressed_channel_mapping",u"compressed_data",b"compressed_data",u"compression_type",b"compression_type",u"dimension_properties",b"dimension_properties",u"float_data",b"float_data",u"observation_data",b"observation_data",u"observation_type",b"observation_type",u"shape",b"shape"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"compressed_channel_mapping",b"compressed_channel_mapping",u"compressed_data",b"compressed_data",u"compression_type",b"compression_type",u"dimension_properties",b"dimension_properties",u"float_data",b"float_data",u"name",b"name",u"observation_data",b"observation_data",u"observation_type",b"observation_type",u"shape",b"shape"]) -> None: ...
     def WhichOneof(self, oneof_group: typing_extensions___Literal[u"observation_data",b"observation_data"]) -> typing_extensions___Literal["compressed_data","float_data"]: ...

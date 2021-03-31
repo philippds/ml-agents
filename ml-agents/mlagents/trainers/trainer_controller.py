@@ -171,6 +171,7 @@ class TrainerController:
         try:
             # Initial reset
             self._reset_env(env_manager)
+            self.param_manager.log_current_lesson()
             while self._not_done_training():
                 n_steps = self.advance(env_manager)
                 for _ in range(n_steps):
@@ -208,7 +209,7 @@ class TrainerController:
     def reset_env_if_ready(self, env: EnvManager) -> None:
         # Get the sizes of the reward buffers.
         reward_buff = {k: list(t.reward_buffer) for (k, t) in self.trainers.items()}
-        curr_step = {k: int(t.step) for (k, t) in self.trainers.items()}
+        curr_step = {k: int(t.get_step) for (k, t) in self.trainers.items()}
         max_step = {k: int(t.get_max_steps) for (k, t) in self.trainers.items()}
         # Attempt to increment the lessons of the brains who
         # were ready.

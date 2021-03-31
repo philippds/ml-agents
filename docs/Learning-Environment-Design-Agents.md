@@ -19,6 +19,8 @@
     - [RayCast Observation Summary & Best Practices](#raycast-observation-summary--best-practices)
   - [Variable Length Observations](#variable-length-observations)
     - [Variable Length Observation Summary & Best Practices](#variable-length-observation-summary--best-practices)
+  - [Goal Signal](#goal-signal)
+    - [Goal Signal Summary & Best Practices](#goal-signal-summary--best-practices)
 - [Actions and Actuators](#actions-and-actuators)
   - [Continuous Actions](#continuous-actions)
   - [Discrete Actions](#discrete-actions)
@@ -29,7 +31,9 @@
   - [Rewards Summary & Best Practices](#rewards-summary--best-practices)
 - [Agent Properties](#agent-properties)
 - [Destroying an Agent](#destroying-an-agent)
-- [Defining Teams for Multi-agent Scenarios](#defining-teams-for-multi-agent-scenarios)
+- [Defining Multi-agent Scenarios](#defining-multi-agent-scenarios)
+  - [Teams for Adversarial Scenarios](#teams-for-adversarial-scenarios)
+  - [Groups for Cooperative Scenarios](#groups-for-cooperative-scenarios)
 - [Recording Demonstrations](#recording-demonstrations)
 
 An agent is an entity that can observe its environment, decide on the best
@@ -539,7 +543,7 @@ the padded observations. Note that attention layers are invariant to
 the order of the entities, so there is no need to properly "order" the
 entities before feeding them into the `BufferSensor`.
 
-The  the `BufferSensorComponent` Editor inspector have two arguments:
+The `BufferSensorComponent` Editor inspector has two arguments:
  - `Observation Size` : This is how many floats each entities will be
  represented with. This number is fixed and all entities must
  have the same representation. For example, if the entities you want to
@@ -562,6 +566,36 @@ between -1 and 1.
  of an entity to the `BufferSensor`.
  - Normalize the entities observations before feeding them into the `BufferSensor`.
 
+### Goal Signal
+
+It is possible for agents to collect observations that will be treated as "goal signal".
+A goal signal is used to condition the policy of the agent, meaning that if the goal
+changes, the policy (i.e. the mapping from observations to actions) will change
+as well. Note that this is true
+for any observation since all observations influence the policy of the Agent to
+some degree. But by specifying a goal signal explicitly, we can make this conditioning
+more important to the agent. This feature can be used in settings where an agent
+must learn to solve different tasks that are similar by some aspects because the
+agent will learn to reuse learnings from different tasks to generalize better.
+In Unity, you can specify that a `VectorSensor` or
+a `CameraSensor` is a goal by attaching a `VectorSensorComponent` or a
+`CameraSensorComponent` to the Agent and selecting `Goal Signal` as `Observation Type`.
+On the trainer side, there are two different ways to condition the policy. This
+setting is determined by the
+[conditioning_type parameter](Training-Configuration-File.md#common-trainer-configurations).
+If set to `hyper` (default) a [HyperNetwork](https://arxiv.org/pdf/1609.09106.pdf)
+will be used to generate some of the
+weights of the policy using the goal observations as input. Note that using a
+HyperNetwork requires a lot of computations, it is recommended to use a smaller
+number of hidden units in the policy to alleviate this.
+If set to `none` the goal signal will be considered as regular observations.
+
+#### Goal Signal Summary & Best Practices
+ - Attach a `VectorSensorComponent` or `CameraSensorComponent` to an agent and
+ set the observation type to goal to use the feature.
+ - Set the conditioning_type parameter in the training configuration.
+ - Reduce the number of hidden units in the network when using the HyperNetwork
+ conditioning type.
 
 ## Actions and Actuators
 
@@ -667,40 +701,42 @@ When using Discrete Actions, it is possible to specify that some actions are
 impossible for the next decision. When the Agent is controlled by a neural
 network, the Agent will be unable to perform the specified action. Note that
 when the Agent is controlled by its Heuristic, the Agent will still be able to
-decide to perform the masked action. In order to mask an action, override the
-`Agent.WriteDiscreteActionMask()` virtual method, and call
-`WriteMask()` on the provided `IDiscreteActionMask`:
+decide to perform the masked action. In order to disallow an action, override
+the `Agent.WriteDiscreteActionMask()` virtual method, and call
+`SetActionEnabled()` on the provided `IDiscreteActionMask`:
 
 ```csharp
 public override void WriteDiscreteActionMask(IDiscreteActionMask actionMask)
 {
-    actionMask.WriteMask(branch, actionIndices);
+    actionMask.SetActionEnabled(branch, actionIndex, isEnabled);
 }
 ```
 
 Where:
 
-- `branch` is the index (starting at 0) of the branch on which you want to mask
-  the action
-- `actionIndices` is a list of `int` corresponding to the indices of the actions
-  that the Agent **cannot** perform.
+- `branch` is the index (starting at 0) of the branch on which you want to
+allow or disallow the action
+- `actionIndex` is the index of the action that you want to allow or disallow.
+- `isEnabled` is a bool indicating whether the action should be allowed or now.
 
 For example, if you have an Agent with 2 branches and on the first branch
 (branch 0) there are 4 possible actions : _"do nothing"_, _"jump"_, _"shoot"_
 and _"change weapon"_. Then with the code bellow, the Agent will either _"do
-nothing"_ or _"change weapon"_ for his next decision (since action index 1 and 2
+nothing"_ or _"change weapon"_ for their next decision (since action index 1 and 2
 are masked)
 
 ```csharp
-WriteMask(0, new int[2]{1,2});
+actionMask.SetActionEnabled(0, 1, false);
+actionMask.SetActionEnabled(0, 2, false);
 ```
 
 If you are looking for an example project where this is implemented, our [Gridworld](https://github.com/Unity-Technologies/ml-agents/blob/master/Project/Assets/ML-Agents/Examples/GridWorld/Scripts/GridAgent.cs#L39) example environment uses action masking.
 
 Notes:
 
-- You can call `WriteMask` multiple times if you want to put masks on multiple
+- You can call `SetActionEnabled` multiple times if you want to put masks on multiple
   branches.
+- At each step, the state of an action is reset and enabled by default.
 - You cannot mask all the actions of a branch.
 - You cannot mask actions in continuous control.
 
@@ -709,7 +745,7 @@ Notes:
 The Actuator API allows users to abstract behavior out of Agents and in to
 components (similar to the ISensor API).  The `IActuator` interface and `Agent`
 class both implement the `IActionReceiver` interface to allow for backward compatibility
-with the current `Agent.OnActionReceived` and `Agent.CollectDiscreteActionMasks` APIs.
+with the current `Agent.OnActionReceived`.
 This means you will not have to change your code until you decide to use the `IActuator` API.
 
 Like the `ISensor` interface, the `IActuator` interface is intended for advanced users.
@@ -904,7 +940,9 @@ is always at least one Agent training at all times by either spawning a new
 Agent every time one is destroyed or by re-spawning new Agents when the whole
 environment resets.
 
-## Defining Teams for Multi-agent Scenarios
+## Defining Multi-agent Scenarios
+
+### Teams for Adversarial Scenarios
 
 Self-play is triggered by including the self-play hyperparameter hierarchy in
 the [trainer configuration](Training-ML-Agents.md#training-configurations). To
@@ -930,6 +968,106 @@ and agent prefabs for our Tennis and Soccer environments. Tennis and Soccer
 provide examples of symmetric games. To train an asymmetric game, specify
 trainer configurations for each of your behavior names and include the self-play
 hyperparameter hierarchy in both.
+
+### Groups for Cooperative Scenarios
+
+Cooperative behavior in ML-Agents can be enabled by instantiating a `SimpleMultiAgentGroup`,
+typically in an environment controller or similar script, and adding agents to it
+using the `RegisterAgent(Agent agent)` method. Note that all agents added to the same `SimpleMultiAgentGroup`
+must have the same behavior name and Behavior Parameters. Using `SimpleMultiAgentGroup` enables the
+agents within a group to learn how to work together to achieve a common goal (i.e.,
+maximize a group-given reward), even if one or more of the group members are removed
+before the episode ends. You can then use this group to add/set rewards, end or interrupt episodes
+at a group level using the `AddGroupReward()`, `SetGroupReward()`, `EndGroupEpisode()`, and
+`GroupEpisodeInterrupted()` methods. For example:
+
+```csharp
+// Create a Multi Agent Group in Start() or Initialize()
+m_AgentGroup = new SimpleMultiAgentGroup();
+
+// Register agents in group at the beginning of an episode
+for (var agent in AgentList)
+{
+  m_AgentGroup.RegisterAgent(agent);
+}
+
+// if the team scores a goal
+m_AgentGroup.AddGroupReward(rewardForGoal);
+
+// If the goal is reached and the episode is over
+m_AgentGroup.EndGroupEpisode();
+ResetScene();
+
+// If time ran out and we need to interrupt the episode
+m_AgentGroup.GroupEpisodeInterrupted();
+ResetScene();
+```
+
+Multi Agent Groups should be used with the MA-POCA trainer, which is explicitly designed to train
+cooperative environments. This can be enabled by using the `poca` trainer - see the
+[training configurations](Training-Configuration-File.md) doc for more information on
+configuring MA-POCA. When using MA-POCA, agents which are deactivated or removed from the Scene
+during the episode will still learn to contribute to the group's long term rewards, even
+if they are not active in the scene to experience them.
+
+See the [Cooperative Push Block](Learning-Environment-Examples.md#cooperative-push-block) environment
+for an example of how to use Multi Agent Groups, and the
+[Dungeon Escape](Learning-Environment-Examples.md#dungeon-escape) environment for an example of
+how the Multi Agent Group can be used with agents that are removed from the scene mid-episode.
+
+**NOTE**: Groups differ from Teams (for competitive settings) in the following way - Agents
+working together should be added to the same Group, while agents playing against each other
+should be given different Team Ids. If in the Scene there is one playing field and two teams,
+there should be two Groups, one for each team, and each team should be assigned a different
+Team Id. If this playing field is duplicated many times in the Scene (e.g. for training
+speedup), there should be two Groups _per playing field_, and two unique Team Ids
+_for the entire Scene_. In environments with both Groups and Team Ids configured, MA-POCA and
+self-play can be used together for training. In the diagram below, there are two agents on each team,
+and two playing fields where teams are pitted against each other. All the blue agents should share a Team Id
+(and the orange ones a different ID), and there should be four group managers, one per pair of agents.
+
+<p align="center">
+  <img src="images/groupmanager_teamid.png"
+       alt="Group Manager vs Team Id"
+       width="650" border="10" />
+</p>
+
+Please see the [SoccerTwos](Learning-Environment-Examples.md#soccer-twos) environment for an example.
+
+#### Cooperative Behaviors Notes and Best Practices
+* An agent can only be registered to one MultiAgentGroup at a time. If you want to re-assign an
+agent from one group to another, you have to unregister it from the current group first.
+
+* Agents with different behavior names in the same group are not supported.
+
+* Agents within groups should always set the `Max Steps` parameter in the Agent script to 0.
+Instead, handle Max Steps using the MultiAgentGroup by ending the episode for the entire
+Group using `GroupEpisodeInterrupted()`.
+
+* `EndGroupEpisode` and `GroupEpisodeInterrupted` do the same job in the game, but has
+slightly different effect on the training. If the episode is completed, you would want to call
+`EndGroupEpisode`. But if the episode is not over but it has been running for enough steps, i.e.
+reaching max step, you would call `GroupEpisodeInterrupted`.
+
+* If an agent finished earlier, e.g. completed tasks/be removed/be killed in the game, do not call
+`EndEpisode()` on the Agent. Instead, disable the agent and re-enable it when the next episode starts,
+or destroy the agent entirely. This is because calling `EndEpisode()` will call `OnEpisodeBegin()`, which
+will reset the agent immediately. While it is possible to call `EndEpisode()` in this way, it is usually not the
+desired behavior when training groups of agents.
+
+* If an agent that was disabled in a scene needs to be re-enabled, it must be re-registered to the MultiAgentGroup.
+
+* Group rewards are meant to reinforce agents to act in the group's best interest instead of
+individual ones, and are treated differently than individual agent rewards during
+training. So calling `AddGroupReward()` is not equivalent to calling agent.AddReward() on each agent
+in the group.
+
+* You can still add incremental rewards to agents using `Agent.AddReward()` if they are
+in a Group. These rewards will only be given to those agents and are received when the
+Agent is active.
+
+* Environments which use Multi Agent Groups can be trained using PPO or SAC, but agents will
+not be able to learn from group rewards after deactivation/removal, nor will they behave as cooperatively.
 
 ## Recording Demonstrations
 

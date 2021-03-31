@@ -215,9 +215,9 @@ namespace Unity.MLAgents.Extensions.Sensors
         protected bool Initialized = false;
 
         /// <summary>
-        /// Array holding the dimensions of the resulting tensor
+        /// Cached ObservationSpec
         /// </summary>
-        private int[] m_Shape;
+        private ObservationSpec m_ObservationSpec;
 
         //
         // Debug Parameters
@@ -267,9 +267,9 @@ namespace Unity.MLAgents.Extensions.Sensors
         private Color DebugDefaultColor = new Color(1f, 1f, 1f, 0.25f);
 
         /// <inheritdoc/>
-        public override ISensor CreateSensor()
+        public override ISensor[] CreateSensors()
         {
-            return this;
+            return new ISensor[] { this };
         }
 
         /// <summary>
@@ -423,7 +423,7 @@ namespace Unity.MLAgents.Extensions.Sensors
             // Default root reference to current game object
             if (rootReference == null)
                 rootReference = gameObject;
-            m_Shape = new[] { GridNumSideX, GridNumSideZ, ObservationPerCell };
+            m_ObservationSpec = ObservationSpec.Visual(GridNumSideX, GridNumSideZ, ObservationPerCell);
 
             compressedImgs = new List<byte[]>();
             byteSizesBytesList = new List<byte[]>();
@@ -475,14 +475,6 @@ namespace Unity.MLAgents.Extensions.Sensors
             }
         }
 
-        /// <summary>Gets the shape of the grid observation</summary>
-        /// <returns>integer array shape of the grid observation</returns>
-        public int[] GetFloatObservationShape()
-        {
-            m_Shape = new[] { GridNumSideX, GridNumSideZ, ObservationPerCell };
-            return m_Shape;
-        }
-
         /// <inheritdoc/>
         public string GetName()
         {
@@ -490,9 +482,9 @@ namespace Unity.MLAgents.Extensions.Sensors
         }
 
         /// <inheritdoc/>
-        public virtual SensorCompressionType GetCompressionType()
+        public virtual CompressionSpec GetCompressionSpec()
         {
-            return CompressionType;
+            return new CompressionSpec(CompressionType);
         }
 
         /// <inheritdoc/>
@@ -914,10 +906,15 @@ namespace Unity.MLAgents.Extensions.Sensors
 
         /// <summary>Gets the observation shape</summary>
         /// <returns>int[] of the observation shape</returns>
-        public override int[] GetObservationShape()
+        public ObservationSpec GetObservationSpec()
         {
-            m_Shape = new[] { GridNumSideX, GridNumSideZ, ObservationPerCell };
-            return m_Shape;
+            // Lazy update
+            var shape = m_ObservationSpec.Shape;
+            if (shape[0] != GridNumSideX || shape[1] != GridNumSideZ || shape[2] != ObservationPerCell)
+            {
+                m_ObservationSpec = ObservationSpec.Visual(GridNumSideX, GridNumSideZ, ObservationPerCell);
+            }
+            return m_ObservationSpec;
         }
 
         /// <inheritdoc/>

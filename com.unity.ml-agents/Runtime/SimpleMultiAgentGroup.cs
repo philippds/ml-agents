@@ -7,12 +7,14 @@ namespace Unity.MLAgents
     /// <summary>
     /// A basic class implementation of MultiAgentGroup.
     /// </summary>
-    internal class SimpleMultiAgentGroup : IMultiAgentGroup, IDisposable
+    public class SimpleMultiAgentGroup : IMultiAgentGroup, IDisposable
     {
         readonly int m_Id = MultiAgentGroupIdCounter.GetGroupId();
         HashSet<Agent> m_Agents = new HashSet<Agent>();
 
-
+        /// <summary>
+        /// Disposes of the SimpleMultiAgentGroup.
+        /// </summary>
         public virtual void Dispose()
         {
             while (m_Agents.Count > 0)

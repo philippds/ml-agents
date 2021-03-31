@@ -81,6 +81,8 @@ def make_fake_trajectory(
     max_step_complete: bool = False,
     memory_size: int = 10,
     num_other_agents_in_group: int = 0,
+    group_reward: float = 0.0,
+    is_terminal: bool = True,
 ) -> Trajectory:
     """
     Makes a fake trajectory of length length. If max_step_complete,
@@ -134,24 +136,29 @@ def make_fake_trajectory(
             interrupted=max_step,
             memory=memory,
             group_status=group_status,
-            group_reward=0,
+            group_reward=group_reward,
         )
         steps_list.append(experience)
     obs = []
     for obs_spec in observation_specs:
         obs.append(np.ones(obs_spec.shape, dtype=np.float32))
+    last_group_status = []
+    for _ in range(num_other_agents_in_group):
+        last_group_status.append(
+            AgentStatus(obs, reward, action, not max_step_complete and is_terminal)
+        )
     last_experience = AgentExperience(
         obs=obs,
         reward=reward,
-        done=not max_step_complete,
+        done=not max_step_complete and is_terminal,
         action=action,
         action_probs=action_probs,
         action_mask=action_mask,
         prev_action=prev_action,
         interrupted=max_step_complete,
         memory=memory,
-        group_status=group_status,
-        group_reward=0,
+        group_status=last_group_status,
+        group_reward=group_reward,
     )
     steps_list.append(last_experience)
     return Trajectory(
@@ -175,12 +182,14 @@ def simulate_rollout(
     behavior_spec: BehaviorSpec,
     memory_size: int = 10,
     exclude_key_list: List[str] = None,
+    num_other_agents_in_group: int = 0,
 ) -> AgentBuffer:
     trajectory = make_fake_trajectory(
         length,
         behavior_spec.observation_specs,
         action_spec=behavior_spec.action_spec,
         memory_size=memory_size,
+        num_other_agents_in_group=num_other_agents_in_group,
     )
     buffer = trajectory.to_agentbuffer()
     # If a key_list was given, remove those keys

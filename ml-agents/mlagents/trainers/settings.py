@@ -92,6 +92,11 @@ class ScheduleType(Enum):
     LINEAR = "linear"
 
 
+class ConditioningType(Enum):
+    HYPER = "hyper"
+    NONE = "none"
+
+
 @attr.s(auto_attribs=True)
 class NetworkSettings:
     @attr.s
@@ -115,6 +120,7 @@ class NetworkSettings:
     num_layers: int = 2
     vis_encode_type: EncoderType = EncoderType.SIMPLE
     memory: Optional[MemorySettings] = None
+    goal_conditioning_type: ConditioningType = ConditioningType.HYPER
 
 
 @attr.s(auto_attribs=True)
@@ -160,6 +166,10 @@ class SACSettings(HyperparamSettings):
     @reward_signal_steps_per_update.default
     def _reward_signal_steps_per_update_default(self):
         return self.steps_per_update
+
+
+# POCA uses the same hyperparameters as PPO
+POCASettings = PPOSettings
 
 
 # INTRINSIC REWARD SIGNALS #############################################################
@@ -600,9 +610,14 @@ class SelfPlaySettings:
 class TrainerType(Enum):
     PPO: str = "ppo"
     SAC: str = "sac"
+    POCA: str = "poca"
 
     def to_settings(self) -> type:
-        _mapping = {TrainerType.PPO: PPOSettings, TrainerType.SAC: SACSettings}
+        _mapping = {
+            TrainerType.PPO: PPOSettings,
+            TrainerType.SAC: SACSettings,
+            TrainerType.POCA: POCASettings,
+        }
         return _mapping[self]
 
 

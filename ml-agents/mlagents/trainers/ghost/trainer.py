@@ -190,9 +190,15 @@ class GhostTrainer(Trainer):
         i.e. in asymmetric games. We assume the last reward determines the winner.
         :param trajectory: Trajectory.
         """
-        if trajectory.done_reached:
+        if (
+            trajectory.done_reached
+            and trajectory.all_group_dones_reached
+            and not trajectory.interrupted
+        ):
             # Assumption is that final reward is >0/0/<0 for win/draw/loss
-            final_reward = trajectory.steps[-1].reward
+            final_reward = (
+                trajectory.steps[-1].reward + trajectory.steps[-1].group_reward
+            )
             result = 0.5
             if final_reward > 0:
                 result = 1.0
